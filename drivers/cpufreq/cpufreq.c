@@ -32,6 +32,10 @@
 
 #include <trace/events/power.h>
 
+#ifdef CONFIG_HARDLIMIT
+int maxlimit = CPU_MAX_FREQ_LIMIT;
+#endif
+
 /**
  * The "cpufreq driver" - the arch- or hardware-dependent low
  * level driver of CPUFreq support, and its spinlock. This lock
@@ -458,6 +462,35 @@ static ssize_t store_##file_name					\
 
 store_one(scaling_max_freq, max);
 
+#ifdef CONFIG_HARDLIMIT
+static ssize_t show_max_limit(struct cpufreq_policy *policy, char *buf)
+{
+	return sprintf(buf, "%d\n", maxlimit);
+}
+
+static ssize_t store_max_limit(struct cpufreq_policy *policy, const char *buf, size_t count)
+{
+
+	unsigned int new_maxlimit, i;
+
+	struct cpufreq_frequency_table *table;
+
+	if (!sscanf(buf, "%du", &new_maxlimit))
+		return -EINVAL;
+
+	table = cpufreq_frequency_get_table(0); /* Get frequency table */
+
+	for (i = 0; (table[i].frequency != CPUFREQ_TABLE_END); i++)
+		if (table[i].frequency == new_maxlimit) {
+		    maxlimit = new_maxlimit;
+		    return count;
+		}
+
+	return -EINVAL;
+
+}
+#endif
+
 /**
  * show_cpuinfo_cur_freq - current CPU frequency as detected by hardware
  */
@@ -672,6 +705,9 @@ cpufreq_freq_attr_rw(scaling_min_freq);
 cpufreq_freq_attr_rw(scaling_max_freq);
 cpufreq_freq_attr_rw(scaling_governor);
 cpufreq_freq_attr_rw(scaling_setspeed);
+#ifdef CONFIG_HARDLIMIT
+cpufreq_freq_attr_rw(max_limit);
+#endif
 #ifdef CONFIG_CPU_VOLTAGE_CONTROL
 cpufreq_freq_attr_rw(UV_mV_table);
 #endif
@@ -692,6 +728,9 @@ static struct attribute *default_attrs[] = {
 	&scaling_driver.attr,
 	&scaling_available_governors.attr,
 	&scaling_setspeed.attr,
+#ifdef CONFIG_HARDLIMIT
+	&max_limit.attr,
+#endif
 #ifdef CONFIG_CPU_VOLTAGE_CONTROL
 	&UV_mV_table.attr,
 #endif
@@ -1783,6 +1822,21 @@ static int __cpufreq_set_policy(struct cpufreq_policy *data,
 	if (ret)
 		goto error_out;
 
+#ifdef CONFIG_HARDLIMIT
+	if (policy->cpuinfo.max_freq != maxlimit)
+	{
+		policy->cpuinfo.max_freq = maxlimit;
+	}
+	if (policy->max > maxlimit)
+	{
+		policy->max = maxlimit;
+	}
+	if (policy->user_policy.max > maxlimit)
+	{
+		policy->user_policy.max = maxlimit;
+	}
+#endif
+
 	/* adjust if necessary - all reasons */
 	blocking_notifier_call_chain(&cpufreq_policy_notifier_list,
 			CPUFREQ_ADJUST, policy);
@@ -1796,6 +1850,21 @@ static int __cpufreq_set_policy(struct cpufreq_policy *data,
 	ret = cpufreq_driver->verify(policy);
 	if (ret)
 		goto error_out;
+
+#ifdef CONFIG_HARDLIMIT
+	if (policy->cpuinfo.max_freq != maxlimit)
+	{
+		policy->cpuinfo.max_freq = maxlimit;
+	}
+	if (policy->max > maxlimit)
+	{
+		policy->max = maxlimit;
+	}
+	if (policy->user_policy.max > maxlimit)
+	{
+		policy->user_policy.max = maxlimit;
+	}
+#endif
 
 	/* notification of the new policy */
 	blocking_notifier_call_chain(&cpufreq_policy_notifier_list,

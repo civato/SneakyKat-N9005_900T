@@ -23,6 +23,10 @@
 
 #define CPUFREQ_NAME_LEN 16
 
+#ifdef CONFIG_HARDLIMIT
+#define CPU_MAX_FREQ_LIMIT 2265600
+#endif
+
 
 /*********************************************************************
  *                     CPUFREQ NOTIFIER INTERFACE                    *
