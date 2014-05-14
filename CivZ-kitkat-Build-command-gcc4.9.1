@@ -1,0 +1,45 @@
+#Building command -Euro
+export ARCH=arm
+export CROSS_COMPILE=~/KERNEL/TOOLCHAINS/gcc-linaro-A15-4.9.1/bin/arm-cortex_a15-linux-gnueabihf-
+make VARIANT_DEFCONFIG=msm8974_sec_hlte_eur_defconfig CivZ_SM9005_defconfig SELINUX_DEFCONFIG=selinux_defconfig
+make -j5
+./scripts/dtbTool -s 2048 -o arch/arm/boot/dt.img arch/arm/boot/
+rm -rf mod
+mkdir mod
+cp `find ./ | grep .ko$` modules.order mod/
+
+
+#Building command Tmobile
+export ARCH=arm
+export CROSS_COMPILE=~/KERNEL/TOOLCHAINS/gcc-linaro-A15-4.9.1/bin/arm-cortex_a15-linux-gnueabihf-
+make VARIANT_DEFCONFIG=msm8974_sec_hlte_tmo_defconfig CivZ_SM900T_defconfig SELINUX_DEFCONFIG=selinux_defconfig
+make -j5
+./scripts/dtbTool -s 2048 -o arch/arm/boot/dt.img arch/arm/boot/
+rm -rf mod
+mkdir mod
+cp `find ./ | grep .ko$` modules.order mod/
+
+
+#The following is needed when you do changes in arch/arm/mach-msm/boot/dts kernel source
+
+#First make sure you got the device tree compiler installed
+sudo apt-get install device-tree-compiler
+
+#Download mkbootimg-tools https://github.com/xiaolu/mkbootimg_tools
+#Place "mkboot" shell script and the "dtbTool; mkboot; mkboot_dtb" executable in script folder
+
+#Build dts.img (needed for overclocking)
+./scripts/dtbTool -s 2048 -o arch/arm/boot/dt.img arch/arm/boot/
+
+#Your zImage & dtb.img will be in arch/arm/boot folder
+
+#Compress your ramdisk into gzip format (ramdisk folder need to be at /home/ramdisk):
+./scripts/mkbootfs /home/ramdisk | gzip > out/ramdisk.gz
+
+#Create the final boot image: (or use image kitchen to combine ramdisk/zImage/dts.img)(http://forum.xda-developers.com/showthread.php?t=2073775)
+
+./scripts/mkbootimg --kernel out/zImage --ramdisk out/ramdisk.gz --dt out/dt.img --cmdline "console=null androidboot.hardware=qcom user_debug=31 msm_rtb.filter=0x3F" --base 0x00000000 --offset 0x02000000 --tags-addr 0x01e00000 --pagesize 2048 -o out/boot.img
+
+
+
+
