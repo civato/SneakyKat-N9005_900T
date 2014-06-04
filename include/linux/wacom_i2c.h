@@ -152,7 +152,9 @@ extern unsigned int system_rev;
 #define EPEN_B713_ORG_X 676
 #define EPEN_B713_ORG_Y 724
 
+#if defined(CONFIG_CPU_FREQ_LIMIT)
 #define WACOM_BOOSTER
+#endif
 #ifdef WACOM_BOOSTER
 #define DVFS_STAGE_TRIPLE	3
 #define DVFS_STAGE_DUAL		2

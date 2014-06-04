@@ -37,7 +37,9 @@
  */
 
 /* feature define */
+#if defined(CONFIG_CPU_FREQ_LIMIT)
 #define TSP_BOOSTER	/* DVFS feature : TOUCH BOOSTER */
+#endif
 #define	USE_OPEN_CLOSE
 #define REPORT_2D_W
 #define REDUCE_I2C_DATA_LENGTH
