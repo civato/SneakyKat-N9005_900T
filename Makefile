@@ -1,7 +1,7 @@
 VERSION = 3
 PATCHLEVEL = 4
 SUBLEVEL = 39
-EXTRAVERSION =~CivZ-SneakyKat-Rev1.9-N9005~
+EXTRAVERSION =~CivZ-SneakyKat-Rev2.4Xtreme-N9005~
 NAME = Saber-toothed Squirrel
 
 # *DOCUMENTATION*
