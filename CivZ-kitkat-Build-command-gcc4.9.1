@@ -1,23 +1,48 @@
 #Building command -Euro
 export ARCH=arm
 export CROSS_COMPILE=~/KERNEL/TOOLCHAINS/gcc-linaro-A15-4.9.1/bin/arm-cortex_a15-linux-gnueabihf-
-make VARIANT_DEFCONFIG=msm8974_sec_hlte_eur_defconfig CivZ_SM9005_defconfig SELINUX_DEFCONFIG=selinux_defconfig
+make VARIANT_DEFCONFIG=msm8974_sec_hlte_eur_defconfig CivZ_SM9005_T_defconfig SELINUX_DEFCONFIG=selinux_defconfig
 make -j5
 ./scripts/dtbTool -s 2048 -o arch/arm/boot/dt.img arch/arm/boot/
 rm -rf mod
 mkdir mod
 cp `find ./ | grep .ko$` modules.order mod/
+
+#Building command -EuroXtreme
+export ARCH=arm
+export CROSS_COMPILE=~/KERNEL/TOOLCHAINS/gcc-linaro-A15-4.9.1/bin/arm-cortex_a15-linux-gnueabihf-
+make VARIANT_DEFCONFIG=msm8974_sec_hlte_eur_defconfig CivZ_SM9005_T_Xtreme_defconfig SELINUX_DEFCONFIG=selinux_defconfig
+make -j5
+./scripts/dtbTool -s 2048 -o arch/arm/boot/dt.img arch/arm/boot/
+rm -rf mod
+mkdir mod
+cp `find ./ | grep .ko$` modules.order mod/
+
 
 
 #Building command Tmobile
 export ARCH=arm
 export CROSS_COMPILE=~/KERNEL/TOOLCHAINS/gcc-linaro-A15-4.9.1/bin/arm-cortex_a15-linux-gnueabihf-
-make VARIANT_DEFCONFIG=msm8974_sec_hlte_tmo_defconfig CivZ_SM900T_defconfig SELINUX_DEFCONFIG=selinux_defconfig
+make VARIANT_DEFCONFIG=msm8974_sec_hlte_tmo_defconfig CivZ_SM9005_T_defconfig SELINUX_DEFCONFIG=selinux_defconfig
 make -j5
 ./scripts/dtbTool -s 2048 -o arch/arm/boot/dt.img arch/arm/boot/
 rm -rf mod
 mkdir mod
 cp `find ./ | grep .ko$` modules.order mod/
+
+#Building command Tmobile Xtreme
+export ARCH=arm
+export CROSS_COMPILE=~/KERNEL/TOOLCHAINS/gcc-linaro-A15-4.9.1/bin/arm-cortex_a15-linux-gnueabihf-
+make VARIANT_DEFCONFIG=msm8974_sec_hlte_tmo_defconfig CivZ_SM9005_T_Xtreme_defconfig SELINUX_DEFCONFIG=selinux_defconfig
+make -j5
+./scripts/dtbTool -s 2048 -o arch/arm/boot/dt.img arch/arm/boot/
+rm -rf mod
+mkdir mod
+cp `find ./ | grep .ko$` modules.order mod/
+
+
+
+
 
 
 #The following is needed when you do changes in arch/arm/mach-msm/boot/dts kernel source
