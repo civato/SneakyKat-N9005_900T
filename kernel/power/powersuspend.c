@@ -31,7 +31,7 @@
 #include <linux/workqueue.h>
 
 #define MAJOR_VERSION	1
-#define MINOR_VERSION	5-Tunable@civato
+#define MINOR_VERSION	5
 
 //#define POWER_SUSPEND_DEBUG // Add debugging prints in dmesg
 
