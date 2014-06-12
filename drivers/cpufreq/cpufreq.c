@@ -56,6 +56,8 @@ static DEFINE_PER_CPU(struct cpufreq_cpu_save_data, cpufreq_policy_save);
 #endif
 static DEFINE_SPINLOCK(cpufreq_driver_lock);
 
+static struct kset *cpufreq_kset;
+
 /*
  * cpu_policy_rwsem is a per CPU reader-writer semaphore designed to cure
  * all cpufreq/hotplug/workqueue/etc related lock issues.
@@ -448,6 +450,9 @@ show_one(scaling_min_freq, min);
 show_one(scaling_max_freq, max);
 show_one(scaling_cur_freq, cur);
 show_one(cpu_utilization, util);
+#ifdef CONFIG_SEC_PM
+show_one(cpu_load, load_at_max);
+#endif
 
 static int __cpufreq_set_policy(struct cpufreq_policy *data,
 				struct cpufreq_policy *policy);
@@ -470,18 +475,100 @@ static ssize_t store_##file_name					\
 	if (ret != 1)							\
 		return -EINVAL;						\
 									\
+	policy->user_policy.object = new_policy.object;			\
+	new_policy.user_policy.object = new_policy.object;		\
+									\
 	ret = cpufreq_driver->verify(&new_policy);			\
 	if (ret)							\
 		pr_err("cpufreq: Frequency verification failed\n");	\
 									\
-	policy->user_policy.object = new_policy.object;			\
 	ret = __cpufreq_set_policy(policy, &new_policy);		\
 									\
 	return ret ? ret : count;					\
 }
 
+#ifdef CONFIG_SEC_PM
+
+/* Yank555.lu : CPU Hardlimit - Enforce userspace dvfs lock */
+#ifdef CONFIG_CPUFREQ_HARDLIMIT
+static ssize_t store_scaling_min_freq
+(struct cpufreq_policy *policy, const char *buf, size_t count)
+{
+	unsigned int ret = -EINVAL;
+	struct cpufreq_policy new_policy;
+
+	// Yank555.lu - Enforce userspace dvfs lock
+	switch (userspace_dvfs_lock_status()) {
+		case CPUFREQ_HARDLIMIT_USERSPACE_DVFS_IGNORE:
+			return count;
+		case CPUFREQ_HARDLIMIT_USERSPACE_DVFS_REFUSE:
+			return -EINVAL;
+	}
+
+	ret = cpufreq_get_policy(&new_policy, policy->cpu);
+	if (ret)
+		return -EINVAL;
+
+	ret = sscanf(buf, "%u", &new_policy.min);
+	if (ret != 1)
+		return -EINVAL;
+
+	policy->user_policy.min = new_policy.min;
+	new_policy.user_policy.min = new_policy.min;
+
+	ret = cpufreq_driver->verify(&new_policy);
+	if (ret)
+		pr_err("cpufreq: Frequency verification failed\n");
+
+	ret = __cpufreq_set_policy(policy, &new_policy);
+
+	return ret ? ret : count;
+}
+#else
+/* Disable scaling_min_freq store */
 store_one(scaling_min_freq, min);
+#endif /* CONFIG_CPUFREQ_HARDLIMIT */
+
+#endif
+
+/* Yank555.lu : CPU Hardlimit - Enforce userspace dvfs lock */
+#ifdef CONFIG_CPUFREQ_HARDLIMIT
+static ssize_t store_scaling_max_freq
+(struct cpufreq_policy *policy, const char *buf, size_t count)
+{
+	unsigned int ret = -EINVAL;
+	struct cpufreq_policy new_policy;
+
+	// Yank555.lu - Enforce userspace dvfs lock
+	switch (userspace_dvfs_lock_status()) {
+		case CPUFREQ_HARDLIMIT_USERSPACE_DVFS_IGNORE:
+			return count;
+		case CPUFREQ_HARDLIMIT_USERSPACE_DVFS_REFUSE:
+			return -EINVAL;
+	}
+
+	ret = cpufreq_get_policy(&new_policy, policy->cpu);
+	if (ret)
+		return -EINVAL;
+
+	ret = sscanf(buf, "%u", &new_policy.max);
+	if (ret != 1)
+		return -EINVAL;
+
+	policy->user_policy.max = new_policy.max;
+	new_policy.user_policy.max = new_policy.max;
+
+	ret = cpufreq_driver->verify(&new_policy);
+	if (ret)
+		pr_err("cpufreq: Frequency verification failed\n");
+
+	ret = __cpufreq_set_policy(policy, &new_policy);
+
+	return ret ? ret : count;
+}
+#else
 store_one(scaling_max_freq, max);
+#endif /* CONFIG_CPUFREQ_HARDLIMIT */
 
 /**
  * show_cpuinfo_cur_freq - current CPU frequency as detected by hardware
@@ -542,6 +629,8 @@ static ssize_t store_scaling_governor(struct cpufreq_policy *policy,
 	policy->user_policy.governor = policy->governor;
 
 	sysfs_notify(policy->kobj, NULL, "scaling_governor");
+
+	kobject_uevent(cpufreq_global_kobject, KOBJ_ADD);
 
 	if (ret)
 		return ret;
@@ -677,7 +766,23 @@ cpufreq_freq_attr_ro(bios_limit);
 cpufreq_freq_attr_ro(related_cpus);
 cpufreq_freq_attr_ro(affected_cpus);
 cpufreq_freq_attr_ro(cpu_utilization);
+#ifdef CONFIG_SEC_PM
+cpufreq_freq_attr_ro(cpu_load);
+/* Disable scaling_min_freq store */
+#ifdef CONFIG_ARCH_MSM8226
+cpufreq_freq_attr_ro(scaling_min_freq);
+#else
 cpufreq_freq_attr_rw(scaling_min_freq);
+#endif
+#else
+#ifdef CONFIG_ARCH_MSM8226
+cpufreq_freq_attr_ro(scaling_min_freq);
+#else
+cpufreq_freq_attr_rw(scaling_min_freq);
+#endif
+#endif
+
+
 cpufreq_freq_attr_rw(scaling_max_freq);
 cpufreq_freq_attr_rw(scaling_governor);
 cpufreq_freq_attr_rw(scaling_setspeed);
@@ -693,6 +798,9 @@ static struct attribute *default_attrs[] = {
 	&scaling_max_freq.attr,
 	&affected_cpus.attr,
 	&cpu_utilization.attr,
+#ifdef CONFIG_SEC_PM
+	&cpu_load.attr,
+#endif
 	&related_cpus.attr,
 	&scaling_governor.attr,
 	&scaling_driver.attr,
@@ -1843,8 +1951,12 @@ static int __cpufreq_set_policy(struct cpufreq_policy *data,
 
 	if (policy->min > data->user_policy.max
 		|| policy->max < data->user_policy.min) {
+		pr_debug("CPUFREQ: %s: pmin:%d, pmax:%d, min:%d, max:%d\n",
+			__func__, policy->min, policy->max, data->min, data->max);
+#ifndef CONFIG_SEC_PM
 		ret = -EINVAL;
 		goto error_out;
+#endif
 	}
 
 	/* verify the cpu speed can be set within this limit */
@@ -2304,6 +2416,12 @@ static int __init cpufreq_core_init(void)
 
 	cpufreq_global_kobject = kobject_create_and_add("cpufreq", &cpu_subsys.dev_root->kobj);
 	BUG_ON(!cpufreq_global_kobject);
+
+	/* create cpufreq kset */
+	cpufreq_kset = kset_create_and_add("kset", NULL, cpufreq_global_kobject);
+	BUG_ON(!cpufreq_kset);
+	cpufreq_global_kobject->kset = cpufreq_kset;
+
 	register_syscore_ops(&cpufreq_syscore_ops);
 
 	return 0;
